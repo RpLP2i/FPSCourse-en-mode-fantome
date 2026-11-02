@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Course en mode fantôme</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#111;color:#fff;overflow:hidden}
+header{height:13vh;min-height:78px;display:flex;align-items:center;justify-content:space-between;padding:10px 18px;background:#181818;border-bottom:2px solid #333}
+h1{font-size:clamp(20px,3vw,38px);margin:0}
+.team-total{font-size:clamp(20px,3vw,36px);font-weight:800;padding:8px 18px;border-radius:12px;background:#222}
+#teamScore{font-size:1.15em}
+.timer-area{position:relative;height:25vh;min-height:245px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 18px 58px;transition:background .25s;background:#16833a}
+.timer-area.recovery{background:#a51f1f}
+.phase{font-size:clamp(18px,2.5vw,30px);font-weight:800;text-transform:uppercase;letter-spacing:2px;line-height:1;margin:0 0 4px}
+#timer{font-size:clamp(62px,11vw,138px);font-weight:900;line-height:.9;margin:0}
+#roundInfo{font-size:clamp(16px,2.2vw,27px);font-weight:700;line-height:1;margin-top:8px}
+.controls{position:absolute;right:18px;bottom:12px;display:flex;gap:8px;z-index:5}
+button{border:0;border-radius:10px;padding:11px 16px;font-size:16px;font-weight:800;cursor:pointer}
+#startBtn{background:#fff;color:#111}
+#pauseBtn{background:#ffd34d;color:#111}
+#resetBtn{background:#ddd;color:#111}
+.runners{height:58vh;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:8px;background:#080808}
+.runner{background:#202020;border-radius:12px;padding:10px;display:flex;flex-direction:column;min-width:0;border-top:7px solid #d71920}
+.runner h2{margin:0 0 7px;text-align:center;font-size:clamp(18px,2.4vw,30px)}
+.field{margin-bottom:7px}
+label{display:block;font-size:13px;color:#bbb;margin-bottom:3px;font-weight:700}
+.settings-panel{height:8vh;min-height:55px;background:#292929;display:flex;align-items:center;gap:10px;padding:7px 18px}
+.settings-panel>div{display:flex;align-items:center;gap:5px}
+.settings-panel label{margin:0;color:#bbb}
+.settings-panel input,.settings-panel select{height:36px;width:auto;min-width:90px;padding:4px 8px}
+#syncStatus{margin-left:auto;font-weight:800;white-space:nowrap}
+#exportBtn{background:#70c7ff;color:#06131a;height:36px;padding:7px 12px;font-size:14px}
+select{width:100%;height:42px;border-radius:8px;border:2px solid #444;background:#111;color:#fff;font-size:18px;font-weight:700;text-align:center}
+input.runner-name{width:100%;height:42px;border-radius:8px;border:2px solid #444;background:#111;color:#fff;font-size:18px;font-weight:700;text-align:center;padding:5px}
+.validate{width:100%;margin-top:7px;background:#2bd45b;color:#061b0b;height:42px}
+.validate:disabled{background:#555;color:#aaa}
+.history{margin-top:7px;max-height:115px;overflow:auto;border-radius:8px;background:#111}
+.history-row{display:grid;grid-template-columns:.55fr 1.3fr .7fr .7fr;gap:3px;padding:4px;border-bottom:1px solid #333;font-size:11px;text-align:center}
+.history-row.header{font-weight:800;color:#aaa;position:sticky;top:0;background:#181818}
+ 
+@media(max-width:800px){.history{max-height:85px}.history-row{font-size:9px}}
+.results{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:3px}
+.results .field{margin:0}
+.score{margin-top:auto;background:#111;border-radius:10px;padding:7px;text-align:center}
+.score-label{font-size:12px;color:#aaa;text-transform:uppercase}
+.score-value{font-size:clamp(28px,4vw,48px);font-weight:900}
+.course-count{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:6px}
+.dot{height:7px;border-radius:5px;background:#444}
+.dot.done{background:#2bd45b}
+.dot.current{background:#fff}
+@media(max-width:800px){
+ header{height:11vh}.timer-area{height:29vh;min-height:220px}.runners{height:60vh}
+ .controls{position:static;margin-top:5px}.controls button{padding:8px 10px;font-size:13px}
+}
+
+/* RESPONSIVE */
+@media (max-width:1099px){
+  html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
+  body{overflow-x:hidden;overflow-y:auto}
+  header{height:auto;min-height:76px;padding:10px 14px;gap:10px}
+  header h1{font-size:clamp(20px,4vw,32px)}
+  .team-total{font-size:clamp(18px,3vw,28px);padding:7px 12px}
+  .settings-panel{height:auto;min-height:62px;flex-wrap:wrap;padding:8px 12px}
+  .settings-panel>div{flex:1 1 auto}
+  #syncStatus{margin-left:auto}
+  .timer-area{height:25vh;min-height:225px}
+  .runners{height:auto;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+  .runner{min-width:0}
+}
+@media (max-width:600px){
+  html,body{height:auto;min-height:100%;overflow-x:hidden;overflow-y:auto}
+  body{overflow-x:hidden;overflow-y:auto}
+  header{padding:8px 10px}
+  header h1{font-size:clamp(17px,5.5vw,25px);line-height:1.05}
+  .team-total{font-size:clamp(16px,4.5vw,22px);padding:7px 9px;max-width:38vw}
+  .settings-panel{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:8px 10px}
+  .settings-panel>div{min-width:0;display:flex;flex-direction:column;align-items:stretch;gap:2px}
+  .settings-panel label{font-size:12px}
+  .settings-panel input,.settings-panel select{width:100%;min-width:0;height:38px;font-size:16px}
+  #exportBtn{width:100%;height:38px}
+  #syncStatus{margin:0;justify-content:center;align-items:center}
+  .timer-area{height:auto;min-height:270px;padding:12px 10px 62px}
+  .phase{font-size:22px}
+  #timer{font-size:clamp(70px,20vw,105px)}
+  #roundInfo{font-size:19px;text-align:center}
+  .controls{position:absolute;left:8px;right:8px;bottom:10px;justify-content:center;gap:6px}
+  .controls button{padding:9px 10px;font-size:14px}
+  .runners{grid-template-columns:1fr;gap:8px;padding:8px;height:auto;min-height:0;overflow:visible}
+  .runner{padding:10px}
+  input.runner-name,select{font-size:17px}
+}
+@media (max-width:380px){
+  header h1{font-size:17px}
+  .team-total{font-size:15px}
+  .controls button{font-size:12px;padding:8px 7px}
+  #timer{font-size:70px}
+}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>🏃 COURSE EN MODE FANTÔME</h1>
+  <div class="team-total">ÉQUIPE : <span id="teamScore">0</span> pts</div>
+</header>
+<section class="settings-panel">
+  <div><label>Équipe</label><input id="teamName" type="text" value="Rouges" placeholder="Équipe"></div>
+  <div><label>Classe</label><input id="className" type="text" placeholder="Classe"></div>
+  <div><label>Tablette</label><select id="tabletId"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+  <button id="exportBtn">⬇ EXPORT CSV</button>
+  <div id="syncStatus">🟢 Prêt</div>
+</section>
+<section id="timerArea" class="timer-area">
+  <div id="phase" class="phase">COURSE</div>
+  <div id="timer">01:30</div>
+  <div id="roundInfo">C1 — 1'30</div>
+  <div class="controls">
+    <button id="startBtn">▶ DÉMARRER</button>
+    <button id="pauseBtn">Ⅱ PAUSE</button>
+    <button id="resetBtn">↺ RESET</button>
+  </div>
+   
+</section>
+
+<section class="runners" id="runners"></section>
+
+<script>
+const runnerNames=[""," ","  ","   "];
+const zones=["Rouge -","Jaune -","Vert","Jaune +","Rouge +"];
+const runnersEl=document.getElementById("runners");
+
+function options(values, placeholder){
+  return `<option value="">${placeholder}</option>`+values.map(v=>`<option value="${v}">${v}</option>`).join("");
+}
+
+function buildRunners(){
+  runnersEl.innerHTML="";
+  runnerNames.forEach((name,i)=>{
+    const r=document.createElement("div");
+    r.className="runner";
+    r.innerHTML=`
+      <div class="field">
+        <label>Nom du coureur</label>
+        <input class="runner-name" type="text" placeholder="Entrer le nom" value="">
+      </div>
+      <div class="field speed-field">
+        <label>Contrat de course — km/h</label>
+        <select class="speed">${options(Array.from({length:19},(_,j)=>j+7),"Choisir 7–25 km/h")}</select>
+      </div>
+      <div class="field">
+        <label>Course / séquence</label>
+        <select class="race">${options(["C1","C2","C3","C4"],"Choisir C1 à C4")}</select>
+      </div>
+      <div class="results">
+        <div class="field">
+          <label>Zone d'arrivée</label>
+          <select class="zone">${options(zones,"Zone")}</select>
+        </div>
+        <div class="field">
+          <label>Points gagnés</label>
+          <select class="points">${options([0,1,2,3,4,5],"0–5")}</select>
+        </div>
+      </div>
+      <button class="validate">✓ VALIDER LE RÉSULTAT</button>
+      <div class="history">
+        <div class="history-row header"><span>Course</span><span>Contrat km/h</span><span>Zone</span><span>Pts</span></div>
+        <div class="history-body"></div>
+      </div>
+      <div class="course-count">${Array.from({length:4},()=>'<div class="dot"></div>').join("")}</div>
+      <div class="score">
+        <div class="score-label">Total coureur</div>
+        <div class="score-value">0</div>
+      </div>`;
+    runnersEl.appendChild(r);
+  });
+}
+buildRunners();
+
+const results = runnerNames.map(()=>[]);
+const APPS_SCRIPT_URL="https://script.google.com/macros/s/AKfycbyTmBvz5nCqZlnwCbh9F-B5nPv1Nq0t-gqp33w3wo_RZd7ug8-0EL2-m1zZPxMP6lda/exec";
+const QUEUE_KEY="course_fantome_pending_v1";
+
+function getQueue(){
+  try{return JSON.parse(localStorage.getItem(QUEUE_KEY)||"[]");}
+  catch(e){return [];}
+}
+function saveQueue(q){localStorage.setItem(QUEUE_KEY,JSON.stringify(q));}
+
+function updateQueueStatus(){
+  const n=getQueue().length;
+  const el=document.getElementById("syncStatus");
+  if(!navigator.onLine) el.textContent=`🔴 Hors connexion — ${n} en attente`;
+  else if(n>0) el.textContent=`🟠 ${n} résultat${n>1?"s":""} en attente`;
+  else el.textContent="🟢 Synchronisé";
+}
+
+async function sendQueuedItem(item){
+  await fetch(APPS_SCRIPT_URL,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify(item)
+  });
+  return true;
+}
+
+async function syncQueue(){
+  let q=getQueue();
+  if(!navigator.onLine || !q.length){updateQueueStatus();return;}
+
+  updateQueueStatus();
+  const remaining=[];
+  for(const item of q){
+    try{
+      await sendQueuedItem(item);
+    }catch(e){
+      remaining.push(item);
+    }
+  }
+  saveQueue(remaining);
+  updateQueueStatus();
+}
+
+function queueResult(runnerIndex,result){
+  const r=document.querySelectorAll(".runner")[runnerIndex];
+  const item={
+    id:`${Date.now()}-${runnerIndex}-${result.race}-${Math.random().toString(36).slice(2)}`,
+    equipe:document.getElementById("teamName").value.trim()||"Rouges",
+    classe:document.getElementById("className").value.trim(),
+    tablette:document.getElementById("tabletId").value,
+    coureur:r.querySelector(".runner-name").value.trim()||`Coureur ${runnerIndex+1}`,
+    course:result.race,
+    contrat:result.speed,
+    zone:result.zone,
+    points:result.points
+  };
+  const q=getQueue();
+  q.push(item);
+  saveQueue(q);
+  updateQueueStatus();
+  syncQueue();
+}
+
+window.addEventListener("online",syncQueue);
+window.addEventListener("offline",updateQueueStatus);
+window.addEventListener("load",()=>{updateQueueStatus();syncQueue();});
+
+function updateRunnerNames(){
+  document.querySelectorAll(".runner").forEach((r,i)=>{
+    const name=r.querySelector(".runner-name").value.trim() || `Coureur ${i+1}`;
+    r.querySelector(".score-label").textContent=`Total ${name}`;
+  });
+}
+
+function updateScores(){
+  updateRunnerNames();
+  let team=0;
+  document.querySelectorAll(".runner").forEach((r,idx)=>{
+    const score=results[idx].reduce((sum,x)=>sum+x.points,0);
+    r.querySelector(".score-value").textContent=score;
+    team+=score;
+    const race=r.querySelector(".race").value;
+    const courseOrder=["C1","C2","C3","C4"];
+    r.querySelectorAll(".dot").forEach((d,i)=>{
+      d.classList.toggle("current",race===courseOrder[i]);
+      d.classList.toggle("done",results[idx].some(x=>x.race===courseOrder[i]));
+    });
+  });
+  document.getElementById("teamScore").textContent=team;
+}
+
+function renderHistory(runnerIndex){
+  const r=document.querySelectorAll(".runner")[runnerIndex];
+  const body=r.querySelector(".history-body");
+  body.innerHTML=results[runnerIndex].map(x=>`
+    <div class="history-row">
+      <span>${x.race}</span><span>${x.speed} km/h</span><span>${x.zone}</span><span>${x.points}</span>
+    </div>`).join("");
+}
+
+function validateResult(runnerIndex){
+  const r=document.querySelectorAll(".runner")[runnerIndex];
+  const race=r.querySelector(".race").value;
+  const speed=r.querySelector(".speed").value;
+  const zone=r.querySelector(".zone").value;
+  const points=r.querySelector(".points").value;
+
+  if(!race || !zone || points===""){
+    alert("Choisis la course, la zone d'arrivée et les points avant de valider.");
+    return;
+  }
+  if(!speed){
+    alert("Choisis le contrat de course en km/h pour C1 à C4.");
+    return;
+  }
+  if(results[runnerIndex].some(x=>x.race===race)){
+    alert("Cette course est déjà validée pour ce coureur.");
+    return;
+  }
+
+  const newResult={race,speed,zone,points:Number(points),sent:false};
+  results[runnerIndex].push(newResult);
+  results[runnerIndex].sort((a,b)=>["C1","C2","C3","C4"].indexOf(a.race)-["C1","C2","C3","C4"].indexOf(b.race));
+  queueResult(runnerIndex,newResult);
+  renderHistory(runnerIndex);
+  updateScores();
+
+  const order=["C1","C2","C3","C4"];
+  const nextRace=order.find(c=>!results[runnerIndex].some(x=>x.race===c))||"";
+  r.querySelector(".race").value=nextRace;
+  r.querySelector(".speed").value="";
+  r.querySelector(".zone").value="";
+  r.querySelector(".points").value="";
+  r.querySelector(".race").dispatchEvent(new Event("change"));
+
+  if(results[runnerIndex].length===4){
+    r.querySelector(".validate").disabled=true;
+    r.querySelector(".validate").textContent="✓ 4/4 VALIDÉS";
+  }
+}
+
+document.querySelectorAll(".runner").forEach((r,idx)=>{
+  r.querySelector(".validate").addEventListener("click",()=>validateResult(idx));
+});
+
+function csvEscape(v){
+  const s=String(v ?? "");
+  return '"' + s.replace(/"/g,'""') + '"';
+}
+
+function exportCSV(){
+  const rows=[["Équipe","Classe","Tablette","Coureur","Course","Contrat km/h","Zone d'arrivée","Points"]];
+  document.querySelectorAll(".runner").forEach((r,i)=>{
+    const name=r.querySelector(".runner-name").value.trim() || `Coureur ${i+1}`;
+    results[i].forEach(x=>{
+      rows.push([document.getElementById("teamName").value.trim()||"Rouges",document.getElementById("className").value.trim(),document.getElementById("tabletId").value,name,x.race,x.speed,x.zone,x.points]);
+    });
+  });
+  if(rows.length===1){
+    alert("Aucun résultat validé à exporter.");
+    return;
+  }
+  const csv="\uFEFF"+rows.map(row=>row.map(csvEscape).join(";")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="Course_en_mode_fantôme_resultats.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+const exportButton=document.getElementById("exportBtn");
+if(exportButton) exportButton.addEventListener("click",exportCSV);
+
+document.addEventListener("change",updateScores);
+document.querySelectorAll(".runner-name").forEach(input=>{
+  input.addEventListener("input",updateRunnerNames);
+});
+updateScores();
+
+// Chronomètre : C1 1'30 / récup 1'30 / C2 3' / récup 1'30 / C3 3' / récup 1'30 / C4 1'30 = 13'30.
+const phases=[
+  {type:"course",label:"C1",duration:90},
+  {type:"recovery",label:"RÉCUPÉRATION",duration:90},
+  {type:"course",label:"C2",duration:180},
+  {type:"recovery",label:"RÉCUPÉRATION",duration:90},
+  {type:"course",label:"C3",duration:180},
+  {type:"recovery",label:"RÉCUPÉRATION",duration:90},
+  {type:"course",label:"C4",duration:90}
+];
+let phaseIndex=0;
+let remaining=phases[0].duration;
+let running=false;
+let timerId=null;
+let beeped=false;
+const timerEl=document.getElementById("timer");
+const phaseEl=document.getElementById("phase");
+const timerArea=document.getElementById("timerArea");
+const roundInfo=document.getElementById("roundInfo");
+function formatTime(sec){
+  const m=Math.floor(sec/60),s=sec%60;
+  return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+function renderTimer(){
+  if(phaseIndex>=phases.length){
+    timerArea.classList.remove("recovery");
+    phaseEl.textContent="TERMINÉ";
+    timerEl.textContent="00:00";
+    roundInfo.textContent="Les 4 courses sont terminées — durée totale 13'30";
+    return;
+  }
+  const p=phases[phaseIndex];
+  const isRecovery=p.type==="recovery";
+  timerArea.classList.toggle("recovery",isRecovery);
+  phaseEl.textContent=isRecovery?"RÉCUPÉRATION":`COURSE ${p.label}`;
+  timerEl.textContent=formatTime(remaining);
+  roundInfo.textContent=isRecovery?`Récupération avant ${phases[phaseIndex+1].label}`:`${p.label} — ${p.duration===180?"3'00":"1'30"}`;
+}
+function beep(frequency=880,duration=.5){
+  try{
+    const AudioContext=window.AudioContext||window.webkitAudioContext;
+    const ctx=new AudioContext();
+    if(ctx.state==="suspended")ctx.resume();
+    const osc=ctx.createOscillator(),gain=ctx.createGain();
+    osc.type="sine";osc.frequency.value=frequency;
+    gain.gain.setValueAtTime(.0001,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(.35,ctx.currentTime+.02);
+    gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+duration);
+    osc.connect(gain);gain.connect(ctx.destination);osc.start();osc.stop(ctx.currentTime+duration+.05);
+  }catch(e){}
+}
+function startTimer(){
+  if(running||phaseIndex>=phases.length)return;
+  try{const AC=window.AudioContext||window.webkitAudioContext;if(AC){const c=new AC();if(c.state==="suspended")c.resume();}}catch(e){}
+  running=true;document.getElementById("startBtn").textContent="▶ EN COURS";
+  timerId=setInterval(()=>{
+    if(remaining===45&&!beeped){beep(880,.6);beeped=true;}
+    remaining--;
+    if(remaining<=0){
+      beep(1100,.7);phaseIndex++;
+      if(phaseIndex>=phases.length){
+        running=false;clearInterval(timerId);timerId=null;remaining=0;renderTimer();
+        document.getElementById("startBtn").textContent="▶ DÉMARRER";return;
+      }
+      remaining=phases[phaseIndex].duration;beeped=false;
+    }
+    renderTimer();
+  },1000);
+  renderTimer();
+}
+function pauseTimer(){
+  if(!running)return;
+  running=false;clearInterval(timerId);timerId=null;
+  document.getElementById("startBtn").textContent="▶ REPRENDRE";
+}
+function resetTimer(){
+  if(!confirm("Réinitialiser complètement la séance ?\n\nTous les résultats, historiques et noms des coureurs seront effacés de cette tablette.\nLes données déjà envoyées et celles en attente de synchronisation seront conservées."))return;
+  running=false;clearInterval(timerId);timerId=null;
+  phaseIndex=0;remaining=phases[0].duration;beeped=false;
+  results.forEach(arr=>arr.splice(0,arr.length));
+  document.querySelectorAll(".runner").forEach(r=>{
+    r.querySelector(".runner-name").value="";
+    r.querySelector(".speed").value="";
+      r.querySelector(".race").value="";
+    r.querySelector(".zone").value="";
+    r.querySelector(".points").value="";
+    r.querySelector(".race").dispatchEvent(new Event("change"));
+    r.querySelector(".history-body").innerHTML="";
+    r.querySelector(".score-value").textContent="0";
+    r.querySelectorAll(".dot").forEach(d=>d.classList.remove("done","current"));
+    const b=r.querySelector(".validate");b.disabled=false;b.textContent="✓ VALIDER LE RÉSULTAT";
+  });
+  document.getElementById("teamScore").textContent="0";
+  document.getElementById("startBtn").textContent="▶ DÉMARRER";
+  updateQueueStatus();renderTimer();
+}
+document.getElementById("startBtn").onclick=startTimer;
+document.getElementById("pauseBtn").onclick=pauseTimer;
+document.getElementById("resetBtn").onclick=resetTimer;
+renderTimer();
+
+</script>
+</body>
+</html>
